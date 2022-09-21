@@ -32,6 +32,9 @@ papermill = "2.3.4"
 torchtext = "0.12.0"
 torchdata = "0.3.0"
 pytorch-lightning = "1.6.4"
+boto3 = "1.21.6"
+gdown = "4.4.0"
+requests = "2.27.1"
 
 [build-system]
 requires = ["poetry-core"]
