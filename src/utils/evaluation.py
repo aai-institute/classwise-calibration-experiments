@@ -1,0 +1,161 @@
+from collections import defaultdict
+
+import numpy as np
+from kyle.evaluation import EvalStats
+from sklearn.model_selection import cross_val_score
+
+from kyle.calibration.calibration_methods import (
+    TemperatureScaling,
+    BetaCalibration,
+    IsotonicRegression,
+    ClassWiseCalibration,
+)
+
+from src.utils.calibration import (
+    ConfidenceReducedCalibration,
+    WeightedConfidenceReducedCalibration,
+    HistogramBinning,
+)
+from src.constants import DEFAULT_CV, DEFAULT_BINS, ALL_METRICS
+
+
+ALL_CALIBRATION_METHOD_FACTORIES = (
+    TemperatureScaling,
+    BetaCalibration,
+    IsotonicRegression,
+    HistogramBinning,
+)
+DEFAULT_WRAPPERS = {
+    "Baseline": lambda method_factory: method_factory(),
+    "Class-wise": lambda method_factory: ClassWiseCalibration(method_factory),
+    "Reduced": lambda method_factory: ConfidenceReducedCalibration(method_factory()),
+    "Class-wise reduced": lambda method_factory: ClassWiseCalibration(
+        lambda: ConfidenceReducedCalibration(method_factory())
+    ),
+    "Weighted Reduced": lambda method_factory: WeightedConfidenceReducedCalibration(
+        method_factory()
+    ),
+    "Class-wise weighted reduced": lambda method_factory: ClassWiseCalibration(
+        lambda: WeightedConfidenceReducedCalibration(method_factory())
+    ),
+}
+WRAPPER_FOR_CHECKING_CONDITION = {
+    "Reduced": lambda method_factory: ConfidenceReducedCalibration(method_factory()),
+    "Weighted Reduced": lambda method_factory: WeightedConfidenceReducedCalibration(
+        method_factory()
+    ),
+}
+
+
+def compute_score(scaler, confs: np.ndarray, labels: np.ndarray, bins, metric="ECE"):
+    calibrated_confs = scaler.get_calibrated_confidences(confs)
+    eval_stats = EvalStats(labels, calibrated_confs, bins=bins)
+    if metric == "ECE":
+        score = eval_stats.expected_calibration_error()
+    elif metric == "cwECE":
+        score = eval_stats.class_wise_expected_calibration_error()
+    elif isinstance(metric, int):
+        score = eval_stats.expected_marginal_calibration_error(metric)
+    elif metric == "condition":
+        if hasattr(scaler, "satisfies_condition_percentage"):
+            result = scaler.satisfies_condition_percentage(confs)
+        score = result
+    else:
+        raise ValueError(f"Unknown metric {metric}")
+    return score
+
+
+def get_scores(scaler, metric, cv, bins, confs, labels):
+    scoring = lambda *args: compute_score(*args, bins=bins, metric=metric)
+    return cross_val_score(
+        scaler, confs, labels, scoring=scoring, cv=cv, error_score="raise"
+    )
+
+
+def evaluate_calibration_wrappers(
+    method_factory,
+    confidences,
+    gt_labels,
+    wrappers_dict=None,
+    metric="ECE",
+    cv=DEFAULT_CV,
+    method_name=None,
+    bins=DEFAULT_BINS,
+    short_description=False,
+):
+    if method_name is None:
+        method_name = method_factory.__name__
+    if short_description:
+        description = f"{method_name}"
+    else:
+        description = (
+            f"Evaluating wrappers of {method_name} on metric {metric} with {bins} bins\n "
+            f"CV with {cv} folds on {len(confidences)} data points."
+        )
+    if wrappers_dict is None:
+        wrappers_dict = DEFAULT_WRAPPERS
+
+    wrapper_scores_dict = {}
+    for wrapper_name, wrapper in wrappers_dict.items():
+        if metric == "weak_condition" and wrapper_name != "Weighted Reduced":
+            continue
+        method = wrapper(method_factory)
+        scores = get_scores(
+            method, metric, cv=cv, bins=bins, confs=confidences, labels=gt_labels
+        )
+        wrapper_scores_dict[wrapper_name] = scores
+    return wrapper_scores_dict, description
+
+
+def perform_default_evaluation(
+    confidences,
+    gt_labels,
+    method_factories=ALL_CALIBRATION_METHOD_FACTORIES,
+    metrics=ALL_METRICS,
+    cv=DEFAULT_CV,
+    wrappers_dict=DEFAULT_WRAPPERS,
+    bins=DEFAULT_BINS,
+):
+    evaluation_results = defaultdict(list)
+    for metric in metrics:
+        print(f"Creating evaluation for {metric}")
+        for method_factory in method_factories:
+            print(f"Computing scores for {method_factory.__name__}", end="\r")
+            result = evaluate_calibration_wrappers(
+                method_factory,
+                confidences=confidences,
+                gt_labels=gt_labels,
+                metric=metric,
+                short_description=True,
+                cv=cv,
+                wrappers_dict=wrappers_dict,
+                bins=bins,
+            )
+            evaluation_results[metric].append(result)
+    return evaluation_results
+
+
+def perform_corollary_condition_evaluation(
+    confidences,
+    gt_labels,
+    method_factories=ALL_CALIBRATION_METHOD_FACTORIES,
+    cv=DEFAULT_CV,
+    wrappers_dict=WRAPPER_FOR_CHECKING_CONDITION,
+    bins=DEFAULT_BINS,
+):
+    results = {"condition": []}
+    print("Creating evaluation for corollary conditions")
+    for method_factory in method_factories:
+        print(f"Computing scores for {method_factory.__name__}", end="\r")
+        result = evaluate_calibration_wrappers(
+            method_factory,
+            confidences=confidences,
+            gt_labels=gt_labels,
+            metric="condition",
+            short_description=True,
+            cv=cv,
+            wrappers_dict=wrappers_dict,
+            bins=bins,
+        )
+        results["condition"].append(result)
+    return results
