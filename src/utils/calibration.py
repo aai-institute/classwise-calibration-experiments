@@ -1,13 +1,17 @@
+import warnings
+
 import numpy as np
 from kyle.calibration.calibration_methods import (
     ConfidenceReducedCalibration,
-    get_reduced_confidences,
     HistogramBinning,
-    TemperatureScaling,
-    BetaCalibration,
-    IsotonicRegression,
-    ClassWiseCalibration,
+    get_reduced_confidences,
 )
+
+__all__ = [
+    "ConfidenceReducedCalibration",
+    "WeightedConfidenceReducedCalibration",
+    "HistogramBinning",
+]
 
 
 class ConfidenceReducedCalibration(ConfidenceReducedCalibration):
@@ -42,7 +46,11 @@ class WeightedConfidenceReducedCalibration(ConfidenceReducedCalibration):
         masked_confidences[mask] = 0.0
 
         # Compute proportions and distribute remaining confidences accordingly
-        proportions = masked_confidences / masked_confidences.sum(axis=1, keepdims=True)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning)
+            proportions = masked_confidences / masked_confidences.sum(
+                axis=1, keepdims=True
+            )
         # Replace NaN values with 1 / (K - 1)
         # This happens when all other predictions are 0
         proportions[np.where(np.isnan(proportions))] = 1.0 / (proportions.shape[1] - 1)

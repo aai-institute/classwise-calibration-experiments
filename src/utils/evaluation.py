@@ -1,23 +1,34 @@
+import logging
 from collections import defaultdict
 
 import numpy as np
+import pandas as pd
+from kyle.calibration.calibration_methods import (
+    BetaCalibration,
+    ClassWiseCalibration,
+    IsotonicRegression,
+    TemperatureScaling,
+)
 from kyle.evaluation import EvalStats
 from sklearn.model_selection import cross_val_score
+from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
-from kyle.calibration.calibration_methods import (
-    TemperatureScaling,
-    BetaCalibration,
-    IsotonicRegression,
-    ClassWiseCalibration,
-)
-
+from src.constants import ALL_METRICS, DEFAULT_BINS, DEFAULT_CV
 from src.utils.calibration import (
     ConfidenceReducedCalibration,
-    WeightedConfidenceReducedCalibration,
     HistogramBinning,
+    WeightedConfidenceReducedCalibration,
 )
-from src.constants import DEFAULT_CV, DEFAULT_BINS, ALL_METRICS
 
+logger = logging.getLogger(__name__)
+
+
+__all__ = [
+    "evaluate_calibration_wrappers",
+    "perform_default_evaluation",
+    "perform_corollary_condition_evaluation",
+]
 
 ALL_CALIBRATION_METHOD_FACTORIES = (
     TemperatureScaling,
@@ -27,11 +38,15 @@ ALL_CALIBRATION_METHOD_FACTORIES = (
 )
 DEFAULT_WRAPPERS = {
     "Baseline": lambda method_factory: method_factory(),
-    "Class-wise": lambda method_factory: ClassWiseCalibration(method_factory),
     "Reduced": lambda method_factory: ConfidenceReducedCalibration(method_factory()),
+    "Class-wise": lambda method_factory: ClassWiseCalibration(method_factory),
     "Class-wise reduced": lambda method_factory: ClassWiseCalibration(
         lambda: ConfidenceReducedCalibration(method_factory())
     ),
+}
+
+ALL_WRAPPERS = {
+    **DEFAULT_WRAPPERS,
     "Weighted Reduced": lambda method_factory: WeightedConfidenceReducedCalibration(
         method_factory()
     ),
@@ -39,6 +54,7 @@ DEFAULT_WRAPPERS = {
         lambda: WeightedConfidenceReducedCalibration(method_factory())
     ),
 }
+
 WRAPPER_FOR_CHECKING_CONDITION = {
     "Reduced": lambda method_factory: ConfidenceReducedCalibration(method_factory()),
     "Weighted Reduced": lambda method_factory: WeightedConfidenceReducedCalibration(
@@ -117,21 +133,22 @@ def perform_default_evaluation(
     bins=DEFAULT_BINS,
 ):
     evaluation_results = defaultdict(list)
-    for metric in metrics:
-        print(f"Creating evaluation for {metric}")
-        for method_factory in method_factories:
-            print(f"Computing scores for {method_factory.__name__}", end="\r")
-            result = evaluate_calibration_wrappers(
-                method_factory,
-                confidences=confidences,
-                gt_labels=gt_labels,
-                metric=metric,
-                short_description=True,
-                cv=cv,
-                wrappers_dict=wrappers_dict,
-                bins=bins,
-            )
-            evaluation_results[metric].append(result)
+    with logging_redirect_tqdm():
+        for metric in tqdm(metrics, desc="Calibration Metrics"):
+            logger.info(f"Creating evaluation for {metric}")
+            for method_factory in tqdm(method_factories, desc="Reduction Methods"):
+                logger.info(f"Computing scores for {method_factory.__name__}")
+                result = evaluate_calibration_wrappers(
+                    method_factory,
+                    confidences=confidences,
+                    gt_labels=gt_labels,
+                    metric=metric,
+                    short_description=True,
+                    cv=cv,
+                    wrappers_dict=wrappers_dict,
+                    bins=bins,
+                )
+                evaluation_results[metric].append(result)
     return evaluation_results
 
 
@@ -144,18 +161,46 @@ def perform_corollary_condition_evaluation(
     bins=DEFAULT_BINS,
 ):
     results = {"condition": []}
-    print("Creating evaluation for corollary conditions")
-    for method_factory in method_factories:
-        print(f"Computing scores for {method_factory.__name__}", end="\r")
-        result = evaluate_calibration_wrappers(
-            method_factory,
-            confidences=confidences,
-            gt_labels=gt_labels,
-            metric="condition",
-            short_description=True,
-            cv=cv,
-            wrappers_dict=wrappers_dict,
-            bins=bins,
-        )
-        results["condition"].append(result)
+    logger.info("Creating evaluation for corollary conditions")
+    with logging_redirect_tqdm():
+        for method_factory in method_factories:
+            logger.info(f"Computing scores for {method_factory.__name__}", end="\r")
+            result = evaluate_calibration_wrappers(
+                method_factory,
+                confidences=confidences,
+                gt_labels=gt_labels,
+                metric="condition",
+                short_description=True,
+                cv=cv,
+                wrappers_dict=wrappers_dict,
+                bins=bins,
+            )
+            results["condition"].append(result)
     return results
+
+
+def combined_results_into_dataframe(
+    eval_results: dict, *, model_name: str, dataset_name: str
+) -> pd.DataFrame:
+    dataframes = []
+
+    for metric, values in eval_results.items():
+        df = pd.DataFrame(values, columns=["values", "Calibration Method"])
+        df = pd.concat([df, df["values"].apply(pd.Series)], axis=1)
+        df = df.drop(columns=["values"])
+        value_vars = [x for x in df.columns if x != "Calibration Method"]
+        df = df.melt(
+            id_vars=["Calibration Method"],
+            value_vars=value_vars,
+            var_name="Reduction Method",
+            value_name="Score",
+        )
+        df = df.explode("Score")
+        df["Metric"] = metric
+        dataframes.append(df)
+
+    results_df = pd.concat(dataframes)
+    results_df["Model"] = model_name
+    results_df["Dataset"] = dataset_name
+    results_df["Model, Dataset"] = results_df["Model"] + ", " + results_df["Dataset"]
+    return results_df

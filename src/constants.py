@@ -8,6 +8,8 @@ DATA_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR = ROOT_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
+RANDOM_SEED = 16
+
 DEFAULT_CV = 6
 DEFAULT_BINS = 25
 
