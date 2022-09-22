@@ -37,7 +37,7 @@ from src.utils.other import get_rf_calibration_dataset
 # %%
 # Constants
 # -------
-output_dir = OUTPUT_DIR / "randomforest_synthetic"
+output_dir = OUTPUT_DIR / "random_forest_synthetic"
 output_dir.mkdir(exist_ok=True)
 
 IMBALANCED_WEIGHTS = (0.3, 0.1, 0.25, 0.15)
@@ -93,6 +93,7 @@ rf_balanced_results_df = combined_results_into_dataframe(
     dataset_name="Synthetic Balanced",
 )
 
+# %%
 reduction_methods_order: List[str] = (
     rf_balanced_results_df["Reduction Method"].unique().tolist()
 )

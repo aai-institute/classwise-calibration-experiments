@@ -4,9 +4,9 @@ from pathlib import Path
 from zipfile import ZipFile
 
 import boto3
-from tqdm.auto import tqdm
 from botocore import UNSIGNED
 from botocore.client import Config
+from tqdm.auto import tqdm
 
 from src.constants import DATA_DIR
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 SOREL20M_DIR = DATA_DIR / "sorel20m"
 
 
-def download_sorel20m(data_dir: Path = SOREL20M_DIR) -> None:
+def download_sorel20m(data_dir: Path) -> None:
     logger.info(f"Downloading Sorel-20M Data to '{data_dir}'")
     data_dir.mkdir(parents=True, exist_ok=True)
 
@@ -59,7 +59,7 @@ def download_sorel20m(data_dir: Path = SOREL20M_DIR) -> None:
             with tqdm(total=uncompress_size, unit="B", unit_scale=True) as pbar:
                 extracted_size = 0
                 for file in zf.infolist():
-                    zf.extract(file, extracted_features_dir / file)
+                    zf.extract(file, extracted_features_dir / file.filename)
                     extracted_size += file.file_size
                     pbar.update(extracted_size)
 
