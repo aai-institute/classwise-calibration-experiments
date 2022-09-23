@@ -54,7 +54,6 @@ labels_file = features_dir / "arr_1.npy" / "arr_1.npy"
 
 n_classes = 2
 classes = ["malware", "benign"]
-class_labels = [i for i in range(n_classes)]
 
 # %%
 # Configuration
@@ -132,7 +131,7 @@ logger.info(f"ECE before calibration: {eval_stats.expected_calibration_error()}"
 # %%
 # Balanced
 # ~~~~~~~~
-logger.info("Performing evaluation for balanced dataset")
+logger.info("Performing evaluation")
 
 eval_results = perform_default_evaluation(
     confidences=uncalibrated_confidences,

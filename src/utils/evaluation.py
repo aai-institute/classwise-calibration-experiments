@@ -1,4 +1,6 @@
+import contextlib
 import logging
+import os
 from collections import defaultdict
 
 import numpy as np
@@ -83,9 +85,17 @@ def compute_score(scaler, confs: np.ndarray, labels: np.ndarray, bins, metric="E
 
 def get_scores(scaler, metric, cv, bins, confs, labels):
     scoring = lambda *args: compute_score(*args, bins=bins, metric=metric)
-    return cross_val_score(
-        scaler, confs, labels, scoring=scoring, cv=cv, error_score="raise"
-    )
+    # Ugly HACK to prevent NetCal from printing directly to stdout
+    with open(os.devnull, "w") as f, contextlib.redirect_stdout(f):
+        return cross_val_score(
+            scaler,
+            confs,
+            labels,
+            scoring=scoring,
+            cv=cv,
+            error_score="raise",
+            verbose=False,
+        )
 
 
 def evaluate_calibration_wrappers(
@@ -164,7 +174,7 @@ def perform_corollary_condition_evaluation(
     logger.info("Creating evaluation for corollary conditions")
     with logging_redirect_tqdm():
         for method_factory in method_factories:
-            logger.info(f"Computing scores for {method_factory.__name__}", end="\r")
+            logger.info(f"Computing scores for {method_factory.__name__}")
             result = evaluate_calibration_wrappers(
                 method_factory,
                 confidences=confidences,

@@ -7,6 +7,7 @@ import boto3
 from botocore import UNSIGNED
 from botocore.client import Config
 from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from src.constants import DATA_DIR
 
@@ -54,14 +55,15 @@ def download_sorel20m(data_dir: Path) -> None:
             dst_path=os.fspath(test_features_local_path),
         )
         logger.info("Extracting test features")
-        with ZipFile(test_features_local_path, mode="r") as zf:
-            uncompress_size = sum((file.file_size for file in zf.infolist()))
-            with tqdm(total=uncompress_size, unit="B", unit_scale=True) as pbar:
-                extracted_size = 0
-                for file in zf.infolist():
-                    zf.extract(file, extracted_features_dir / file.filename)
-                    extracted_size += file.file_size
-                    pbar.update(extracted_size)
+        with logging_redirect_tqdm():
+            with ZipFile(test_features_local_path, mode="r") as zf:
+                uncompress_size = sum((file.file_size for file in zf.infolist()))
+                with tqdm(total=uncompress_size, unit="B", unit_scale=True) as pbar:
+                    extracted_size = 0
+                    for file in zf.infolist():
+                        zf.extract(file, extracted_features_dir / file.filename)
+                        extracted_size += file.file_size
+                        pbar.update(extracted_size)
 
     if lightgbm_checkpoints_path.is_file():
         logger.info("LightGBM checkpoint was already downloaded. Skipping")
@@ -121,10 +123,11 @@ def download_sorel20m(data_dir: Path) -> None:
 
 def download_file_from_s3(s3_client, bucket_name: str, key: str, dst_path: str):
     object_size = s3_client.head_object(Bucket=bucket_name, Key=key)["ContentLength"]
-    with tqdm(total=object_size, unit="B", unit_scale=True) as pbar:
-        s3_client.download_file(
-            Bucket=bucket_name,
-            Key=key,
-            Filename=dst_path,
-            Callback=lambda bytes_transferred: pbar.update(bytes_transferred),
-        )
+    with logging_redirect_tqdm():
+        with tqdm(total=object_size, unit="B", unit_scale=True) as pbar:
+            s3_client.download_file(
+                Bucket=bucket_name,
+                Key=key,
+                Filename=dst_path,
+                Callback=lambda bytes_transferred: pbar.update(bytes_transferred),
+            )
