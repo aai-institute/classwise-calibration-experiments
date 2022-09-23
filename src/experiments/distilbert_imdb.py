@@ -1,17 +1,20 @@
 """
-Script for the ResNet56 calibration experiment on CIFAR10 Dataset
-=================================================================
+Script for the DistilBERT calibration experiment on IMDB Dataset
+================================================================
 
 We compare multiple calibration algorithms with their reduced, 
-class-wise and class-wise reduced counterparts.
+class-wise and class-wise reduced counterparts. We use for this experiment 4 cross-validation splits
+and 20 bins for ECE and cwECE instead of 5 and 25, respectively, like for the other experiments
+because of the low number of samples in the dataset.
 
-We work with a pre-trained ResNet56 classifier trained on the `CIFAR10 Dataset <https://www.cs.toronto.edu/~kriz/cifar.html>`_,
-a multi-class classification dataset consisting of 60000 images split evenly across 10 classes
+We work with a pre-trained DistilBERT classifier trained by distilling the
+BERT base model and then fine-tuned on the `IMDB Dataset <http://ai.stanford.edu/~amaas/data/sentiment/>`_,
+a dataset for binary sentiment classification consisting of 50000 movie reviews.
 
-The model achieves an accuracy of roughly 93% of the test set.
+The model achieves an accuracy of roughly 92% of the test set.
 
 Since the model's accuracy is pretty high it is, as expected, well calibrated
-(pre-calibration ECE ≈ 0.046, post-calibration ECE <= 0.015).
+(pre-calibration ECE ≈ 0.043, post-calibration ECE <= 0.002).
 """
 
 # %%
@@ -21,19 +24,17 @@ import logging
 import os
 from typing import List
 
-# This import is needed to avoid a circular import error
-import kyle.calibration.calibration_methods
 import numpy as np
 import torch
 import torch.nn.functional as F
-from kyle.datasets import get_cifar10_dataloader
+import torchtext
 from kyle.evaluation import EvalStats
-from kyle.models.resnet import resnet56
 from sklearn.metrics import accuracy_score
+from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
+from transformers import DistilBertForSequenceClassification, DistilBertTokenizer
 
 from src.constants import DATA_DIR, OUTPUT_DIR, RANDOM_SEED
-from src.data_and_models.resnet import download_resnet_models
 from src.utils import (
     configure_plots,
     perform_default_evaluation,
@@ -45,15 +46,18 @@ from src.utils.evaluation import combined_results_into_dataframe
 # %%
 # Constants
 # -------
-output_dir = OUTPUT_DIR / "resnet56_cifar10"
+output_dir = OUTPUT_DIR / "distilbert_imdb"
 output_dir.mkdir(exist_ok=True)
 output_file = output_dir / "results.csv"
 
-resnet_dir = DATA_DIR / "resnet56_cifar10"
-resnet56_model_file = resnet_dir / "resnet56.th"
+imdb_dir = DATA_DIR / "distilbert_imdb"
+
 
 # %%
-n_classes = 10
+model_name = "textattack/distilbert-base-uncased-imdb"
+batch_size = 64
+classes = ["neg", "pos"]
+n_classes = len(classes)
 
 # %%
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -74,18 +78,21 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 # %%
 # Data
 # ----
-data_loader = get_cifar10_dataloader(os.fspath(resnet_dir), train=False)
+tokenizer = DistilBertTokenizer.from_pretrained(model_name)
+datapipe = torchtext.datasets.IMDB(root=os.fspath(imdb_dir), split="test")
+datapipe = datapipe.batch(batch_size).rows2columnar(["label", "text"])
+datapipe = datapipe.map(
+    lambda x: [
+        tokenizer(x["text"], return_tensors="pt", truncation=True, padding=True),
+        torch.LongTensor(list(map(lambda k: classes.index(k), x["label"]))),
+    ]
+)
+dataloader = DataLoader(datapipe, batch_size=None)
 
 # %%
 # Model
 # -----
-download_resnet_models(resnet_dir)
-
-# %%
-model = resnet56()
-model = torch.nn.DataParallel(model)
-check_point = torch.load(resnet56_model_file, map_location=torch.device("cpu"))
-model.load_state_dict(check_point["state_dict"])
+model = DistilBertForSequenceClassification.from_pretrained(model_name)
 model = model.to(device)
 model.eval()
 
@@ -94,19 +101,21 @@ model.eval()
 # ----------------------
 logger.info("Generating model predictions on test set")
 
-logits = []
-true_labels = []
+all_logits = []
+y_true = []
 
 with torch.no_grad():
-    for features, labels in tqdm(data_loader, total=len(data_loader)):
-        features = features.to(device)
-        true_labels.append(labels)
-        output = model(features)
-        output = output.to("cpu")
-        logits.append(output)
+    for inputs, labels in tqdm(dataloader, total=25000 // batch_size):
+        y_true.append(labels)
+        inputs = inputs.to(device)
+        output = model(**inputs)
+        logits = output.logits
+        logits = logits.to("cpu")
+        all_logits.append(logits)
 
-uncalibrated_confidences = F.softmax(torch.cat(logits), dim=1).numpy()
-y_true = torch.cat(true_labels).numpy()
+all_logits = torch.cat(all_logits)
+uncalibrated_confidences = F.softmax(all_logits, dim=1).numpy()
+y_true = torch.cat(y_true).numpy()
 
 # %%
 y_pred = np.argmax(uncalibrated_confidences, axis=1)
@@ -136,8 +145,8 @@ eval_results = perform_default_evaluation(
 
 results_df = combined_results_into_dataframe(
     eval_results,
-    model_name="ResNet56",
-    dataset_name="CIFAR10",
+    model_name="DistilBERT",
+    dataset_name="IMDB",
 )
 
 # %%
@@ -162,6 +171,6 @@ results_df = results_df.query("(Metric != 'condition') & (Metric != 'weak_condit
 plot_evaluation_results_from_dataframe(
     results_df,
     hue_order=reduction_methods_order,
-    output_file=(output_dir / "evaluation_ECE_resnet56_cifar10.eps"),
+    output_file=(output_dir / "evaluation_ECE_distilbert_imdb.eps"),
     show=False,
 )
