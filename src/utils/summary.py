@@ -1,10 +1,49 @@
+from typing import List
+
 import pandas as pd
 
-__all__ = ["create_summary_table_with_relative_change_and_stddev"]
+__all__ = [
+    "create_summary_table_with_absolute_values_and_stddev",
+    "create_summary_table_with_relative_change_and_stddev",
+]
+
+
+def create_summary_table_with_absolute_values_and_stddev(
+    df: pd.DataFrame, reduction_methods_order: List[str]
+) -> pd.DataFrame:
+    df = df.groupby(
+        ["Model, Dataset", "Calibration Method", "Reduction Method"], as_index=False
+    ).mean()
+    df = df.pivot_table(
+        "Score", ["Model, Dataset", "Calibration Method"], "Reduction Method"
+    )
+    df = df.reindex(columns=df.columns.reindex(reduction_methods_order)[0])
+    df = df.reindex(
+        labels=[
+            "DeiT, RVL-CDIP",
+            "DistilBERT, IMDB",
+            "LightGBM, SOREL20M",
+            "ResNet56, CIFAR10",
+            "Random Forest, Synthetic Balanced",
+            "Random Forest, Synthetic Imbalanced",
+        ],
+        level=0,
+    )
+    df = df.reindex(
+        labels=[
+            "TemperatureScaling",
+            "BetaCalibration",
+            "IsotonicRegression",
+            "HistogramBinning",
+        ],
+        level=1,
+    )
+    return df
 
 
 def create_summary_table_with_relative_change_and_stddev(
     df: pd.DataFrame,
+    reduction_methods_order: List[str],
 ) -> pd.DataFrame:
     df = df.groupby(
         ["Model, Dataset", "Calibration Method", "Reduction Method"], as_index=False
@@ -60,4 +99,27 @@ def create_summary_table_with_relative_change_and_stddev(
             lambda x: f"±{abs(x):.2f}%"
         )
     )
+
+    df = df.reindex(columns=df.columns.reindex(reduction_methods_order)[0])
+    df = df.reindex(
+        labels=[
+            "DeiT, RVL-CDIP",
+            "DistilBERT, IMDB",
+            "LightGBM, SOREL20M",
+            "ResNet56, CIFAR10",
+            "Random Forest, Synthetic Balanced",
+            "Random Forest, Synthetic Imbalanced",
+        ],
+        level=0,
+    )
+    df = df.reindex(
+        labels=[
+            "TemperatureScaling",
+            "BetaCalibration",
+            "IsotonicRegression",
+            "HistogramBinning",
+        ],
+        level=1,
+    )
+
     return df
