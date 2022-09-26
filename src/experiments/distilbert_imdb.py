@@ -14,7 +14,7 @@ a dataset for binary sentiment classification consisting of 50000 movie reviews.
 The model achieves an accuracy of roughly 92% of the test set.
 
 Since the model's accuracy is pretty high it is, as expected, well calibrated
-(pre-calibration ECE ≈ 0.043, post-calibration ECE <= 0.002).
+(pre-calibration ECE ≈ 0.043, post-calibration ECE <= 0.02).
 """
 
 # %%
@@ -67,10 +67,6 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 # -------------
 set_random_seed(RANDOM_SEED)
 configure_plots()
-
-# Required to avoid `RuntimeError: Too many open files.`
-# Refer to this issue for for information: https://github.com/pytorch/pytorch/issues/11201
-torch.multiprocessing.set_sharing_strategy("file_system")
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(message)s")

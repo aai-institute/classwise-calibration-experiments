@@ -36,6 +36,11 @@ def download_rvl_cdip(data_dir: Path = RVL_CDIP_DIR) -> None:
                 quiet=False,
                 fuzzy=True,
             )
+            if not dataset_local_path.is_file():
+                raise RuntimeError(
+                    f"Could not download dataset programmatically. Please download it manually from this url '{dataset_url}' "
+                    f"and move it to this directory '{data_dir}'"
+                )
 
         if extracted_dataset_local_path.is_dir():
             logger.info("Dataset was already extracted. Skipping")

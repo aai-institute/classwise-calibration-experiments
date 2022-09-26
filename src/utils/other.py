@@ -1,17 +1,22 @@
 import logging
 import random
+from pathlib import Path
 from typing import Optional, Tuple
 
 import numpy as np
 import torch
+from PIL import Image, ImageFile, UnidentifiedImageError
 from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import StratifiedShuffleSplit
+from torch.utils.data import Dataset
 
 from src.constants import RANDOM_SEED
 
-__all__ = ["set_random_seed"]
+__all__ = ["set_random_seed", "is_notebook", "RVLCDIPDataset", "open_image"]
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
@@ -69,3 +74,26 @@ def get_rf_calibration_dataset(
     accuracy = accuracy_score(y_pred, y_test)
     logger.info(f"Model accuracy: {accuracy}")
     return confidences, y_test
+
+
+class RVLCDIPDataset(Dataset):
+    def __init__(self, features: np.ndarray, labels: list[int]):
+        super().__init__()
+        self.features = features
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, item):
+        features = self.features[item]
+        label = torch.LongTensor([self.labels[item]])
+        return {"features": features, "label": label}
+
+
+def open_image(image_file: Path) -> Optional[Image.Image]:
+    try:
+        image = Image.open(image_file).convert("RGB")
+    except UnidentifiedImageError:
+        image = None
+    return image
