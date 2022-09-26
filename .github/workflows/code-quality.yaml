@@ -23,7 +23,7 @@ jobs:
       with:
         python-version: 3.9
     - name: Cache Poetry
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: $POETRY_HOME
         key: poetry-1.2.0
@@ -35,12 +35,16 @@ jobs:
         echo "$POETRY_HOME/bin" >> $GITHUB_PATH
     - name: Cache Dependencies
       id: cache-deps
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ~/.virtualenvs
         key: poetry-${{ hashFiles('**/poetry.lock') }}
     - name: Install Dependencies
       run: poetry install --no-interaction --no-root --only dev
       if: steps.cache-deps.outputs.cache-hit != 'true'
+    - uses: actions/cache@v3
+      with:
+        path: ~/.cache/pre-commit
+        key: pre-commit-|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
     - name: Run pre-commit
       run: poetry run pre-commit run -a --verbose --show-diff-on-failure
