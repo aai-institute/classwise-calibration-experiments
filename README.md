@@ -1,8 +1,8 @@
-# Class-wise and Reduced Calibration Methods
+# Experiments for "Class-wise and Reduced Calibration Methods"
 
 [![Code Quality](https://github.com/appliedAI-Initiative/Class-wise-and-reduced-calibration-methods/actions/workflows/code-quality.yaml/badge.svg)](https://github.com/appliedAI-Initiative/Class-wise-and-reduced-calibration-methods/actions/workflows/code-quality.yaml)
 
-This repository contains the experiment for the "class-wise and reduced calibration methods" paper submitted to ICMLA 2022
+This repository contains the experiments for the paper by Panchenko, Benmerzoug and de Benito Delgado, *Class-wise and reduced calibration methods*, submitted to the 21st IEEE International Conference on Machine Learning and Applications ([ICMLA 2022](https://www.icmla-conference.org/icmla22)).
 
 # Pre-requisites
 
