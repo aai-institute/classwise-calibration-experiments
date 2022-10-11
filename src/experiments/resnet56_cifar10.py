@@ -1,6 +1,6 @@
 """
-Script for the ResNet56 calibration experiment on CIFAR10 Dataset
-=================================================================
+ResNet56 calibration experiment on CIFAR10 Dataset
+==================================================
 
 We compare multiple calibration algorithms with their reduced, 
 class-wise and class-wise reduced counterparts.

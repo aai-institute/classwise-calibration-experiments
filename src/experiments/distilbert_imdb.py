@@ -1,6 +1,6 @@
 """
-Script for the DistilBERT calibration experiment on IMDB Dataset
-================================================================
+DistilBERT calibration experiment on IMDB Dataset
+=================================================
 
 We compare multiple calibration algorithms with their reduced, 
 class-wise and class-wise reduced counterparts. We use for this experiment 4 cross-validation splits

@@ -1,5 +1,5 @@
 """
-Script for the combining the results of the calibration experiments
+Script for combining the results of the calibration experiments
 ===================================================================
 
 We combine the different results of the calibration experiments and create the plots
