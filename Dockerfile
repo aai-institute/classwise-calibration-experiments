@@ -61,4 +61,6 @@ USER ${NB_USER}
 
 WORKDIR classwise-calibration-experiments
 
+ENV PYTHONPATH="${HOME}/classwise-calibration-experiments:$PYTHONPATH"
+
 CMD ["bash"]
