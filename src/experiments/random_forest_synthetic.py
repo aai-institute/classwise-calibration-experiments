@@ -1,6 +1,6 @@
 """
-Script for the Random Forest calibration experiment on Synthetic Data
-=====================================================================
+Random Forest calibration experiment on Synthetic Data
+======================================================
 
 We compare multiple calibration algorithms with their reduced, 
 class-wise and class-wise reduced counterparts.

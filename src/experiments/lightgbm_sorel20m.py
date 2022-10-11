@@ -1,6 +1,6 @@
 """
-Script for the LightGBM calibration experiment on Sorel20M Dataset
-==================================================================
+LightGBM calibration experiment on Sorel20M Dataset
+===================================================
 
 We compare multiple calibration algorithms with their reduced, 
 class-wise and class-wise reduced counterparts.

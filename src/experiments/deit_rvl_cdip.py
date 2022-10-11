@@ -1,6 +1,6 @@
 """
-Script for the DeiT calibration experiment on RVL-CDIP Dataset
-==============================================================
+DeiT calibration experiment on RVL-CDIP Dataset
+===============================================
 
 We compare multiple calibration algorithms with their reduced, 
 class-wise and class-wise reduced counterparts.
