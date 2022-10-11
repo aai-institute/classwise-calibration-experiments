@@ -11,7 +11,25 @@ This project uses [Poetry](https://python-poetry.org/) for dependency management
 Start by installing it and then proceed to installing the requirements:
 
 ```shell
-poetry install
+poetry install --no-root
+```
+
+And then activating the created virtual environment:
+
+```shell
+poetry shell
+```
+
+As an alternative you could build a docker image from the Dockerfile:
+
+```shell
+docker build . -t classwise-calibration:local
+```
+
+And then start a container and mount the repository inside this container:
+
+```shell
+docker container run -it --rm --mount type=bind,source=$(pwd),target=/home/experimenter/classwise-calibration-experiments classwise-calibration:local
 ```
 
 # Experiments
@@ -28,7 +46,7 @@ poetry install
 To run the experiments use:
 
 ```shell
-poetry run python -m src.experiments.<Experiment Module>
+python -m src.experiments.<Experiment Module>
 ```
 
 Where you would replace <Experiment Module> with the name of one of experiments' module.
@@ -36,7 +54,7 @@ Where you would replace <Experiment Module> with the name of one of experiments'
 For example, to run the Random Forest experiment with Synthetic Data use:
 
 ```shell
-poetry run python -m src.experiments.random_forest_synthetic
+python -m src.experiments.random_forest_synthetic
 ```
 
 ## Notebooks
