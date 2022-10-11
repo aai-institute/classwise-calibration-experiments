@@ -26,10 +26,16 @@ As an alternative you could build a docker image from the Dockerfile:
 docker build . -t classwise-calibration:local
 ```
 
-And then start a container and mount the repository inside this container:
+And then simply start a container:
 
 ```shell
-docker container run -it --rm --mount type=bind,source=$(pwd),target=/home/experimenter/classwise-calibration-experiments classwise-calibration:local
+docker container run -it --rm classwise-calibration:local
+```
+
+To start the notebooks from within the container use:
+
+```shell
+docker run -it --rm -p 8888:8888 classwise-calibration:local jupyter notebook --NotebookApp.default_url=/lab/ --ip=0.0.0.0 --port=8888
 ```
 
 # Experiments

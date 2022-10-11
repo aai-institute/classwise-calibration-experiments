@@ -5,7 +5,7 @@ ENV PYTHONFAULTHANDLER=1 \
     PYTHONUNBUFFERED=1
 
 # create user with a home directory
-ARG NB_USER=experimenter
+ARG NB_USER=jovyan
 ARG NB_UID=1000
 ENV USER ${NB_USER}
 ENV HOME /home/${NB_USER}
@@ -26,7 +26,7 @@ ENV PIP_DEFAULT_TIMEOUT=100 \
     POETRY_VERSION=1.2.0
 
 # create user with a home directory
-ARG NB_USER=experimenter
+ARG NB_USER=jovyan
 ENV USER=${NB_USER} \
     HOME=/home/${NB_USER}
 
@@ -43,14 +43,22 @@ RUN poetry config virtualenvs.create false --local \
 FROM base as final
 
 # create user with a home directory
-ARG NB_USER=experimenter
+ARG NB_USER=jovyan
+ARG NB_UID=1000
 ENV USER=${NB_USER} \
     HOME=/home/${NB_USER}
 
 USER ${USER}
 
 COPY --from=builder $HOME/.venv $HOME/.venv
-
 ENV PATH="$HOME/.venv/bin:$PATH"
+
+COPY . ./classwise-calibration-experiments
+
+USER root
+RUN chown -R ${NB_UID} ${HOME}/classwise-calibration-experiments
+USER ${NB_USER}
+
+WORKDIR classwise-calibration-experiments
 
 CMD ["bash"]
