@@ -48,3 +48,10 @@ They are generated from the experiment scripts as follows:
 ```shell
 bash scripts/generate_notebooks.sh
 ```
+
+# License
+
+This repository is distributed under [LGPL-3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
+A complete version can be found in two files: [here](LICENSE) and [here](COPYING.LESSER).
+
+All contributions will be distributed under this license.
