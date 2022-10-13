@@ -20,17 +20,25 @@ Since the model's accuracy is pretty high it is, as expected, well calibrated
 # -------
 import logging
 import os
+import sys
+from pathlib import Path
 from typing import List
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from kyle.evaluation import EvalStats
 from sklearn.metrics import accuracy_score
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from transformers import AutoFeatureExtractor, AutoModelForImageClassification
 
+# %%
+# This is needed for notebooks in case jupyter is started directly in the notebooks directory
+current_working_directory = Path(".").resolve()
+if current_working_directory.name == "notebooks":
+    sys.path.insert(0, os.fspath(current_working_directory.parent))
+
+# %%
 from src.constants import DATA_DIR, OUTPUT_DIR, RANDOM_SEED
 from src.data_and_models.rvl_cdip import download_rvl_cdip
 from src.utils import (

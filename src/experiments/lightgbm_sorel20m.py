@@ -29,6 +29,14 @@ import numpy as np
 from kyle.evaluation import EvalStats
 from sklearn.metrics import accuracy_score
 
+# %%
+
+# This is needed for notebooks in case jupyter is started directly in the notebooks directory
+current_working_directory = Path(".").resolve()
+if current_working_directory.name == "notebooks":
+    sys.path.insert(0, os.fspath(current_working_directory.parent))
+
+# %%
 from src.constants import DATA_DIR, OUTPUT_DIR, RANDOM_SEED
 from src.data_and_models.sorel20m import download_sorel20m
 from src.utils import (

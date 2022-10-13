@@ -19,11 +19,21 @@ As is common with random forests, the resulting model is highly miscalibrated
 # Imports
 # -------
 import logging
+import os
+import sys
+from pathlib import Path
 from typing import List
 
 import pandas as pd
 from kyle.evaluation import EvalStats
 
+# %%
+# This is needed for notebooks in case jupyter is started directly in the notebooks directory
+current_working_directory = Path(".").resolve()
+if current_working_directory.name == "notebooks":
+    sys.path.insert(0, os.fspath(current_working_directory.parent))
+
+# %%
 from src.constants import OUTPUT_DIR, RANDOM_SEED
 from src.utils import (
     configure_plots,
